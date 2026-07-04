@@ -39,7 +39,7 @@ export default function Users() {
   const handleCreate = async () => {
     if (!form.username || !form.password) { toast({ title: "Username and password required", variant: "destructive" }); return; }
     try {
-      await createUser.mutateAsync({ username: form.username, email: form.email, password: form.password, role: form.role });
+      await createUser.mutateAsync({ data: { username: form.username, email: form.email, password: form.password, role: form.role } });
       toast({ title: "User created", description: `${form.username} added successfully` });
       setCreateOpen(false);
       resetForm();

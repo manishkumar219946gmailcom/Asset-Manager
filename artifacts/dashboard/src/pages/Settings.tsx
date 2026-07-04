@@ -81,7 +81,7 @@ export default function Settings() {
 
   const handleSave = async () => {
     try {
-      await updateSettings.mutateAsync({
+      await updateSettings.mutateAsync({ data: {
         loconet_api_url: form.loconet_api_url,
         loconet_api_key: form.loconet_api_key,
         whatsapp_phone_number_id: form.whatsapp_phone_number_id,
@@ -89,7 +89,7 @@ export default function Settings() {
         whatsapp_recipient_phone: form.whatsapp_recipient_phone,
         alert_enabled: String(form.alert_enabled),
         scheduler_interval_minutes: String(form.scheduler_interval_minutes),
-      });
+      }});
       toast({ title: "Settings saved", description: "Configuration updated successfully" });
     } catch {
       toast({ title: "Save failed", variant: "destructive" });
