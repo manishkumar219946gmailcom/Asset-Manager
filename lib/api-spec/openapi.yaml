@@ -3,28 +3,37 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Indian Railways LocoNet Fault Monitoring System API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
-paths:
-  /healthz:
-    get:
-      operationId: healthCheck
-      tags: [health]
-      summary: Health check
-      description: Returns server health status
-      responses:
-        "200":
-          description: Healthy
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/HealthStatus"
+  - name: auth
+    description: Authentication
+  - name: dashboard
+    description: Dashboard statistics
+  - name: faults
+    description: Fault records management
+  - name: charts
+    description: Chart data
+  - name: alerts
+    description: WhatsApp alert logs
+  - name: audit
+    description: Audit logs
+  - name: settings
+    description: Application settings
+  - name: reports
+    description: Reports
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   schemas:
     HealthStatus:
       type: object
@@ -34,3 +43,1225 @@ components:
       required:
         - status
 
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+      required:
+        - username
+        - password
+
+    LoginResult:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+      required:
+        - token
+        - user
+
+    UserInput:
+      type: object
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+        role:
+          type: string
+          enum: [admin, user]
+      required:
+        - username
+        - email
+        - password
+        - role
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [admin, user]
+        createdAt:
+          type: string
+          format: date-time
+        lastLogin:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - username
+        - email
+        - role
+        - createdAt
+
+    Fault:
+      type: object
+      properties:
+        id:
+          type: integer
+        uniqueFaultId:
+          type: string
+        alertType:
+          type: string
+          nullable: true
+        locoNo:
+          type: string
+          nullable: true
+        locoType:
+          type: string
+          nullable: true
+        shed:
+          type: string
+          nullable: true
+        zone:
+          type: string
+          nullable: true
+        loggedTimestamp:
+          type: string
+          nullable: true
+        faultCode:
+          type: string
+          nullable: true
+        faultDescription:
+          type: string
+          nullable: true
+        basicUnit:
+          type: string
+          nullable: true
+        category:
+          type: string
+          nullable: true
+        moduleName:
+          type: string
+          nullable: true
+        coachNumber:
+          type: string
+          nullable: true
+        location:
+          type: string
+          nullable: true
+        datapack:
+          type: string
+          nullable: true
+        coachType:
+          type: string
+          nullable: true
+        recoveryStatus:
+          type: string
+          nullable: true
+        downloadStatus:
+          type: string
+          nullable: true
+        apiTimestamp:
+          type: string
+          nullable: true
+        dbTimestamp:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - uniqueFaultId
+        - createdAt
+
+    FaultListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Fault"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalPages:
+          type: integer
+      required:
+        - data
+        - total
+        - page
+        - pageSize
+        - totalPages
+
+    DashboardStats:
+      type: object
+      properties:
+        totalFaultsToday:
+          type: integer
+        categoryA:
+          type: integer
+        categoryB:
+          type: integer
+        categoryC:
+          type: integer
+        recoveredFaults:
+          type: integer
+        activeFaults:
+          type: integer
+        todayCoaches:
+          type: integer
+        todayLocoCount:
+          type: integer
+        lastUpdated:
+          type: string
+          format: date-time
+      required:
+        - totalFaultsToday
+        - categoryA
+        - categoryB
+        - categoryC
+        - recoveredFaults
+        - activeFaults
+        - todayCoaches
+        - todayLocoCount
+        - lastUpdated
+
+    ChartDataPoint:
+      type: object
+      properties:
+        label:
+          type: string
+        value:
+          type: integer
+      required:
+        - label
+        - value
+
+    TrendDataPoint:
+      type: object
+      properties:
+        timestamp:
+          type: string
+        count:
+          type: integer
+      required:
+        - timestamp
+        - count
+
+    AlertLog:
+      type: object
+      properties:
+        id:
+          type: integer
+        faultId:
+          type: integer
+        uniqueFaultId:
+          type: string
+        locoNo:
+          type: string
+          nullable: true
+        faultCode:
+          type: string
+          nullable: true
+        whatsappNumber:
+          type: string
+        message:
+          type: string
+        status:
+          type: string
+          enum: [sent, failed, pending]
+        sentAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - faultId
+        - uniqueFaultId
+        - whatsappNumber
+        - message
+        - status
+        - createdAt
+
+    ApiLog:
+      type: object
+      properties:
+        id:
+          type: integer
+        endpoint:
+          type: string
+        statusCode:
+          type: integer
+          nullable: true
+        responseTime:
+          type: integer
+          nullable: true
+        recordsFetched:
+          type: integer
+          nullable: true
+        newRecords:
+          type: integer
+          nullable: true
+        updatedRecords:
+          type: integer
+          nullable: true
+        error:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - endpoint
+        - createdAt
+
+    LoginHistory:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        username:
+          type: string
+        action:
+          type: string
+        ip:
+          type: string
+          nullable: true
+        userAgent:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - userId
+        - username
+        - action
+        - createdAt
+
+    Setting:
+      type: object
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - key
+        - value
+        - updatedAt
+
+    SettingsMap:
+      type: object
+      properties:
+        apiEndpoint:
+          type: string
+        apiKey:
+          type: string
+        refreshInterval:
+          type: string
+        whatsappPhoneNumberId:
+          type: string
+        whatsappAccessToken:
+          type: string
+        whatsappRecipient:
+          type: string
+        timezone:
+          type: string
+        dashboardLink:
+          type: string
+      required:
+        - apiEndpoint
+        - apiKey
+        - refreshInterval
+        - whatsappPhoneNumberId
+        - whatsappAccessToken
+        - whatsappRecipient
+        - timezone
+        - dashboardLink
+
+    UpdateSettingsRequest:
+      type: object
+      properties:
+        apiEndpoint:
+          type: string
+        apiKey:
+          type: string
+        refreshInterval:
+          type: string
+        whatsappPhoneNumberId:
+          type: string
+        whatsappAccessToken:
+          type: string
+        whatsappRecipient:
+          type: string
+        timezone:
+          type: string
+        dashboardLink:
+          type: string
+
+    SchedulerStatus:
+      type: object
+      properties:
+        running:
+          type: boolean
+        lastRun:
+          type: string
+          format: date-time
+          nullable: true
+        nextRun:
+          type: string
+          format: date-time
+          nullable: true
+        intervalMinutes:
+          type: integer
+      required:
+        - running
+        - intervalMinutes
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+      required:
+        - error
+        - message
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResult"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+
+  /auth/users:
+    get:
+      operationId: listUsers
+      tags: [auth]
+      summary: List users (admin only)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Users list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+
+    post:
+      operationId: createUser
+      tags: [auth]
+      summary: Create user (admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserInput"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /dashboard/stats:
+    get:
+      operationId: getDashboardStats
+      tags: [dashboard]
+      summary: Get dashboard statistics
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Date for stats (defaults to today)
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /dashboard/scheduler:
+    get:
+      operationId: getSchedulerStatus
+      tags: [dashboard]
+      summary: Get scheduler status
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Scheduler status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SchedulerStatus"
+
+  /faults:
+    get:
+      operationId: listFaults
+      tags: [faults]
+      summary: List faults with filters and pagination
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: zone
+          in: query
+          schema:
+            type: string
+        - name: shed
+          in: query
+          schema:
+            type: string
+        - name: locoNo
+          in: query
+          schema:
+            type: string
+        - name: coachNumber
+          in: query
+          schema:
+            type: string
+        - name: faultCode
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: moduleName
+          in: query
+          schema:
+            type: string
+        - name: basicUnit
+          in: query
+          schema:
+            type: string
+        - name: location
+          in: query
+          schema:
+            type: string
+        - name: coachType
+          in: query
+          schema:
+            type: string
+        - name: recoveryStatus
+          in: query
+          schema:
+            type: string
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+        - name: sortOrder
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+      responses:
+        "200":
+          description: Faults list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FaultListResponse"
+
+  /faults/{id}:
+    get:
+      operationId: getFault
+      tags: [faults]
+      summary: Get single fault
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Fault record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Fault"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /faults/{id}/history:
+    get:
+      operationId: getFaultHistory
+      tags: [faults]
+      summary: Get fault history (all occurrences of same fault code + loco)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Fault history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Fault"
+
+  /faults/export:
+    get:
+      operationId: exportFaults
+      tags: [faults]
+      summary: Export faults (returns download token)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: format
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [csv, excel, pdf]
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: zone
+          in: query
+          schema:
+            type: string
+        - name: shed
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: recoveryStatus
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Export info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  downloadUrl:
+                    type: string
+                  filename:
+                    type: string
+                  records:
+                    type: integer
+                required:
+                  - downloadUrl
+                  - filename
+                  - records
+
+  /faults/filter-options:
+    get:
+      operationId: getFaultFilterOptions
+      tags: [faults]
+      summary: Get distinct values for filter dropdowns
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Filter options
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  zones:
+                    type: array
+                    items:
+                      type: string
+                  sheds:
+                    type: array
+                    items:
+                      type: string
+                  categories:
+                    type: array
+                    items:
+                      type: string
+                  faultCodes:
+                    type: array
+                    items:
+                      type: string
+                  modules:
+                    type: array
+                    items:
+                      type: string
+                  basicUnits:
+                    type: array
+                    items:
+                      type: string
+                  locations:
+                    type: array
+                    items:
+                      type: string
+                  coachTypes:
+                    type: array
+                    items:
+                      type: string
+                required:
+                  - zones
+                  - sheds
+                  - categories
+                  - faultCodes
+                  - modules
+                  - basicUnits
+                  - locations
+                  - coachTypes
+
+  /charts/category-pie:
+    get:
+      operationId: getCategoryPieChart
+      tags: [charts]
+      summary: Category-wise fault distribution
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Category chart data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChartDataPoint"
+
+  /charts/fault-trend:
+    get:
+      operationId: getFaultTrend
+      tags: [charts]
+      summary: Fault trend over time (hourly/daily/monthly)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [hourly, daily, monthly]
+            default: daily
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Trend data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TrendDataPoint"
+
+  /charts/fault-code:
+    get:
+      operationId: getFaultCodeChart
+      tags: [charts]
+      summary: Top fault codes by count
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Fault code chart data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChartDataPoint"
+
+  /charts/module:
+    get:
+      operationId: getModuleChart
+      tags: [charts]
+      summary: Module-wise fault distribution
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Module chart data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChartDataPoint"
+
+  /charts/location:
+    get:
+      operationId: getLocationChart
+      tags: [charts]
+      summary: Location-wise fault distribution
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Location chart data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChartDataPoint"
+
+  /charts/loco:
+    get:
+      operationId: getLocoChart
+      tags: [charts]
+      summary: Top locos by fault count
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Loco chart data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChartDataPoint"
+
+  /charts/recovery-trend:
+    get:
+      operationId: getRecoveryTrend
+      tags: [charts]
+      summary: Recovery trend over time
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [daily, monthly]
+            default: daily
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Recovery trend data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TrendDataPoint"
+
+  /alerts:
+    get:
+      operationId: listAlerts
+      tags: [alerts]
+      summary: List WhatsApp alert logs
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [sent, failed, pending]
+      responses:
+        "200":
+          description: Alert logs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AlertLog"
+                  total:
+                    type: integer
+                required:
+                  - data
+                  - total
+
+  /audit/api-logs:
+    get:
+      operationId: listApiLogs
+      tags: [audit]
+      summary: List API fetch logs
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: API logs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ApiLog"
+                  total:
+                    type: integer
+                required:
+                  - data
+                  - total
+
+  /audit/login-history:
+    get:
+      operationId: listLoginHistory
+      tags: [audit]
+      summary: List login history
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Login history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/LoginHistory"
+                  total:
+                    type: integer
+                required:
+                  - data
+                  - total
+
+  /settings:
+    get:
+      operationId: getSettings
+      tags: [settings]
+      summary: Get all settings
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SettingsMap"
+
+    put:
+      operationId: updateSettings
+      tags: [settings]
+      summary: Update settings
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSettingsRequest"
+      responses:
+        "200":
+          description: Settings updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SettingsMap"
+
+  /scheduler/trigger:
+    post:
+      operationId: triggerFetch
+      tags: [dashboard]
+      summary: Manually trigger API fetch
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Fetch triggered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  newRecords:
+                    type: integer
+                  updatedRecords:
+                    type: integer
+                required:
+                  - message
+                  - newRecords
+                  - updatedRecords

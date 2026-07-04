@@ -1,0 +1,3 @@
+- [Orval hook names](orval-hook-names.md) — generated hooks don't always match OpenAPI operationId; grep api.ts before importing
+- [Admin password seeding](admin-password-seeding.md) — bcryptjs.hash must run from the api-server dir; root workspace lacks the package
+- [JWT localStorage pattern](jwt-localstorage.md) — tokens in localStorage; setAuthTokenGetter from api-client-react wires auth globally
