@@ -1,0 +1,519 @@
+You are a Senior Full Stack Developer and Software Architect.
+
+I want to build a professional Windows Desktop + Web Dashboard application for Indian Railways LocoNet Fault Monitoring System.
+
+The software will use my official LocoNet REST API Key.
+
+The software should automatically fetch fault data from the API every 2 minutes.
+
+===========================
+TECH STACK
+===========================
+
+Backend:
+Python FastAPI
+
+Database:
+PostgreSQL
+
+Frontend:
+ReactJS
+
+Charts:
+Chart.js
+ApexCharts
+
+Authentication:
+JWT Login
+
+Desktop Version:
+PyInstaller EXE
+
+Notifications:
+WhatsApp Cloud API
+
+Scheduling:
+Background Scheduler (APScheduler)
+
+===========================
+PROJECT MODULES
+===========================
+
+1. Login Module
+
+Admin Login
+User Login
+
+Role Based Access
+
+===========================
+
+2. API Module
+
+Use API Key Authentication.
+
+Automatically call LocoNet API every 2 minutes.
+
+Store every response into PostgreSQL.
+
+Do not insert duplicate records.
+
+Each record should have
+
+Unique ID
+Timestamp
+Download Time
+
+===========================
+
+3. Dashboard
+
+Professional Railway Theme
+
+Top Cards
+
+Total Faults Today
+
+Category A
+
+Category B
+
+Category C
+
+Recovered Faults
+
+Active Faults
+
+Today's Coaches
+
+Today's Loco Count
+
+===========================
+
+4. Complete Data Table
+
+The table should look exactly like LocoNet Website.
+
+Display ALL columns exactly as received from API.
+
+Columns include
+
+Alert Type
+
+Loco No
+
+Loco Type
+
+Shed
+
+Zone
+
+Logged Timestamp
+
+Fault Code
+
+Fault Description
+
+Basic Unit
+
+Category
+
+Module Name
+
+Coach Number
+
+Location
+
+Datapack
+
+Coach Type
+
+Recovery Status
+
+Download Status
+
+API Timestamp
+
+Database Timestamp
+
+Every column should support
+
+Sorting
+
+Filtering
+
+Searching
+
+Column Resize
+
+Column Hide
+
+Pagination
+
+Export Excel
+
+Export CSV
+
+Export PDF
+
+===========================
+
+5. Filters
+
+Date Range
+
+Zone
+
+Shed
+
+Loco Number
+
+Coach Number
+
+Fault Code
+
+Category
+
+Module
+
+Basic Unit
+
+Location
+
+Coach Type
+
+Recovered / Active
+
+Search Box
+
+===========================
+
+6. Charts
+
+Fault Trend
+
+Category Wise Pie Chart
+
+Fault Code Wise Chart
+
+Module Wise Chart
+
+Location Wise Chart
+
+Coach Wise Chart
+
+Loco Wise Chart
+
+Recovery Trend
+
+Hourly Fault Trend
+
+Daily Trend
+
+Monthly Trend
+
+===========================
+
+7. Live Auto Refresh
+
+Refresh every 2 minutes.
+
+Show
+
+Last Updated Time
+
+Next Refresh Countdown
+
+Loading Animation
+
+===========================
+
+8. WhatsApp Alert System
+
+Whenever a NEW Category A fault appears
+
+Immediately send WhatsApp Message.
+
+Never send duplicate alerts.
+
+Maintain Alert Log table.
+
+Message Format
+
+🚨 CATEGORY A FAULT ALERT
+
+Loco No:
+Coach:
+Fault Code:
+Fault Description:
+Module:
+Basic Unit:
+Location:
+Time:
+
+Open Dashboard:
+Dashboard Link
+
+===========================
+
+9. Alert Rules
+
+Only Category A
+
+Only New Records
+
+Ignore Recovered
+
+No Duplicate
+
+===========================
+
+10. Reports
+
+Daily Report
+
+Weekly Report
+
+Monthly Report
+
+Custom Date Report
+
+Excel
+
+CSV
+
+PDF
+
+===========================
+
+11. Fault Analysis
+
+Top Fault Codes
+
+Repeated Faults
+
+Repeated Coach
+
+Repeated Loco
+
+Most Problematic Module
+
+Failure Frequency
+
+Mean Time Between Fault
+
+Recovery Time
+
+===========================
+
+12. Fault History
+
+Click any fault
+
+Open complete history
+
+Show
+
+Previous occurrences
+
+Recovery records
+
+Time difference
+
+Charts
+
+===========================
+
+13. Search
+
+Global Search
+
+Instant Search
+
+===========================
+
+14. Dashboard Theme
+
+Dark
+
+Light
+
+Railway Theme
+
+Responsive
+
+===========================
+
+15. Audit
+
+User Login History
+
+API Logs
+
+WhatsApp Logs
+
+Error Logs
+
+Download Logs
+
+===========================
+
+16. Settings
+
+API Key
+
+Refresh Interval
+
+WhatsApp Number
+
+Timezone
+
+Export Folder
+
+Database Backup
+
+===========================
+
+17. Security
+
+JWT
+
+HTTPS
+
+Encrypted API Key
+
+Encrypted Database Password
+
+Input Validation
+
+SQL Injection Protection
+
+===========================
+
+18. Database Tables
+
+users
+
+roles
+
+faults
+
+alert_logs
+
+api_logs
+
+settings
+
+download_logs
+
+history
+
+===========================
+
+19. API Processing
+
+If same Fault ID already exists
+
+Update Recovery Status only
+
+Else
+
+Insert New Record
+
+===========================
+
+20. Dashboard Features
+
+Sticky Header
+
+Sticky Filters
+
+Resizable Columns
+
+Dark Mode
+
+Live Counter
+
+Excel Style Table
+
+Infinite Scroll
+
+Export Button
+
+===========================
+
+21. Future Features
+
+Email Alerts
+
+SMS Alerts
+
+Telegram Alerts
+
+Mobile App
+
+AI Prediction
+
+Fault Prediction
+
+Predictive Maintenance
+
+===========================
+
+22. UI Style
+
+Modern
+
+Professional
+
+Indian Railways Theme
+
+Blue
+
+White
+
+Dark Grey
+
+Minimal
+
+High Speed
+
+===========================
+
+Generate complete production-ready project including
+
+✔ Folder Structure
+
+✔ Database Schema
+
+✔ SQL Script
+
+✔ Backend APIs
+
+✔ React Dashboard
+
+✔ Authentication
+
+✔ Scheduler
+
+✔ WhatsApp Integration
+
+✔ Excel Export
+
+✔ PDF Export
+
+✔ Charts
+
+✔ Search
+
+✔ Filters
+
+✔ Deployment Guide
+
+✔ EXE Build
+
+✔ README
+
+✔ Comments
+
+The code should be modular, clean, production-ready, scalable and enterprise-grade.
