@@ -1,0 +1,215 @@
+You are an expert Full Stack Developer. Implement the following feature in my existing software without changing the current workflow or breaking any existing functionality.
+
+## Existing Workflow
+- The software fetches fault data from Loconet.
+- It displays the fetched data in the application.
+- It automatically sends Critical Fault notifications through WhatsApp.
+- Keep all of the above functionality exactly as it is.
+
+## New Feature Requirements
+
+### 1. Excel-Based Fault Master
+Create a Fault Master system that reads an Excel file (.xlsx/.xls).
+
+The Excel file will contain at least the following columns:
+
+- Fault Code
+- Fault Description
+- Rectification Process
+
+The Rectification Process column may contain long multi-line text, numbered steps, bullet points, and special characters. Preserve the formatting while reading and sending it.
+
+---
+
+### 2. Automatic Fault Code Matching
+
+Whenever new data is received from Loconet:
+
+- Continue displaying data exactly as before.
+- Detect every new Critical Fault.
+- Extract the Fault Code.
+- Search the uploaded Excel Fault Master for the same Fault Code.
+
+If a matching Fault Code exists:
+
+Retrieve:
+- Fault Code
+- Fault Description
+- Complete Rectification Process
+
+If no matching record exists:
+
+Continue sending the normal WhatsApp notification without the rectification details.
+
+---
+
+### 3. Enhanced WhatsApp Notification
+
+When a matching Fault Code is found, automatically send a WhatsApp message in the following format:
+
+🚨 CRITICAL FAULT DETECTED
+
+Loco No:
+Date:
+Time:
+
+Fault Code:
+Fault Description:
+
+=========================
+RECTIFICATION PROCESS
+=========================
+
+<Complete Rectification Process from Excel>
+
+=========================
+
+Please attend immediately.
+
+The Rectification Process must be sent completely without truncating the text.
+
+---
+
+### 4. Settings Page Enhancement
+
+Add a new section:
+
+Settings → Fault Master
+
+Include:
+
+- Upload Excel File
+- Replace Existing Excel
+- Remove Excel
+- Preview Uploaded Data
+- Show Upload Date & Time
+- Validate Required Columns
+- Display Total Fault Records Imported
+- Save Configuration
+
+Supported formats:
+
+- .xlsx
+- .xls
+
+---
+
+### 5. Validation
+
+Before importing:
+
+Verify that the Excel contains:
+
+- Fault Code
+- Fault Description
+- Rectification Process
+
+If any required column is missing:
+
+Show a proper validation message and do not import the file.
+
+---
+
+### 6. Data Storage
+
+After upload:
+
+- Parse the Excel only once.
+- Store the data in a local database (SQLite/MySQL) or an optimized local cache.
+- Do NOT read the Excel file every time a new fault arrives.
+- When a new Excel is uploaded, replace the existing Fault Master with the latest data.
+
+---
+
+### 7. Matching Rules
+
+- Ignore leading/trailing spaces.
+- Matching should be case-insensitive.
+- Ignore unnecessary formatting differences.
+- Handle duplicate Fault Codes gracefully (use the first occurrence or notify the user).
+
+---
+
+### 8. Performance
+
+The software may receive many fault messages continuously.
+
+Requirements:
+
+- Fast lookup
+- No UI lag
+- No blocking during Excel import
+- Import should run in the background with progress indication
+
+---
+
+### 9. Error Handling
+
+Handle:
+
+- Invalid Excel format
+- Empty Excel
+- Missing columns
+- Corrupted file
+- Duplicate Fault Codes
+- Missing Rectification Process
+- Upload interruption
+
+Show meaningful error messages.
+
+---
+
+### 10. UI Requirements
+
+The existing UI must remain unchanged.
+
+Only add:
+
+Settings
+   └── Fault Master
+
+with:
+
+✔ Upload Excel
+✔ Replace Excel
+✔ Preview Data
+✔ Imported Records
+✔ Upload Date
+✔ Save
+
+---
+
+### 11. Logging
+
+Log the following events:
+
+- Excel uploaded
+- Excel replaced
+- Total imported records
+- Fault Code matched
+- Fault Code not found
+- WhatsApp sent
+- WhatsApp failed
+- Import errors
+
+---
+
+### 12. Code Quality
+
+- Clean architecture
+- Modular implementation
+- Well-commented code
+- Reusable functions
+- Proper exception handling
+- No duplicate logic
+- Production-ready implementation
+
+---
+
+### IMPORTANT
+
+- Do NOT remove or modify any existing functionality.
+- Keep the current Loconet data fetching exactly the same.
+- Keep the current WhatsApp integration exactly the same.
+- Simply extend the existing workflow by adding Excel-based Fault Master lookup and Rectification Process in WhatsApp notifications.
+- Ensure the implementation is robust, scalable, and maintainable.

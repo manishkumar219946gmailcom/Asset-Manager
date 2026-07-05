@@ -4,6 +4,7 @@ import { db } from "@workspace/db";
 import { alertLogsTable, settingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "./logger.js";
+import { lookupFaultMaster } from "./fault-master-cache.js";
 
 // Lazy-loaded baileys socket
 let sock: import("@whiskeysockets/baileys").WASocket | null = null;
@@ -139,18 +140,69 @@ export async function sendCategoryAAlert(fault: FaultForAlert): Promise<void> {
     .limit(1);
   if (alreadySent.length > 0) return;
 
+  // Look up fault master for rectification process
+  const masterEntry = await lookupFaultMaster(fault.faultCode);
+
   const dashboardLink = await getSetting("dashboardLink");
-  const message =
-    `🚨 *CATEGORY A FAULT ALERT*\n\n` +
-    `🚂 *Loco No:* ${fault.locoNo ?? "N/A"}\n` +
-    `🔢 *Coach:* ${fault.coachNumber ?? "N/A"}\n` +
-    `⚠️ *Fault Code:* ${fault.faultCode ?? "N/A"}\n` +
-    `📋 *Description:* ${fault.faultDescription ?? "N/A"}\n` +
-    `🔧 *Module:* ${fault.moduleName ?? "N/A"}\n` +
-    `🏭 *Basic Unit:* ${fault.basicUnit ?? "N/A"}\n` +
-    `📍 *Location:* ${fault.location ?? "N/A"}\n` +
-    `🕐 *Time:* ${fault.loggedTimestamp ?? "N/A"}` +
-    (dashboardLink ? `\n\n🔗 Dashboard: ${dashboardLink}` : "");
+
+  // Parse loggedTimestamp into separate date and time
+  let dateStr = "N/A";
+  let timeStr = "N/A";
+  if (fault.loggedTimestamp) {
+    try {
+      const d = new Date(fault.loggedTimestamp);
+      if (!isNaN(d.getTime())) {
+        dateStr = d.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" });
+        timeStr = d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
+      } else {
+        // Try as raw string split
+        const parts = fault.loggedTimestamp.split(/[ T]/);
+        dateStr = parts[0] ?? fault.loggedTimestamp;
+        timeStr = parts[1]?.slice(0, 5) ?? "N/A";
+      }
+    } catch {
+      dateStr = fault.loggedTimestamp;
+    }
+  }
+
+  let message: string;
+
+  if (masterEntry?.rectificationProcess) {
+    // Enhanced message with rectification process from Fault Master
+    message =
+      `🚨 *CRITICAL FAULT DETECTED*\n\n` +
+      `🚂 *Loco No:* ${fault.locoNo ?? "N/A"}\n` +
+      `📅 *Date:* ${dateStr}\n` +
+      `🕐 *Time:* ${timeStr}\n\n` +
+      `⚠️ *Fault Code:* ${fault.faultCode ?? "N/A"}\n` +
+      `📋 *Fault Description:* ${masterEntry.faultDescription ?? fault.faultDescription ?? "N/A"}\n\n` +
+      `=========================\n` +
+      `*RECTIFICATION PROCESS*\n` +
+      `=========================\n\n` +
+      `${masterEntry.rectificationProcess}\n\n` +
+      `=========================\n\n` +
+      `⚡ *Please attend immediately.*` +
+      (dashboardLink ? `\n\n🔗 Dashboard: ${dashboardLink}` : "");
+  } else {
+    // Standard message (no fault master match)
+    message =
+      `🚨 *CATEGORY A FAULT ALERT*\n\n` +
+      `🚂 *Loco No:* ${fault.locoNo ?? "N/A"}\n` +
+      `🔢 *Coach:* ${fault.coachNumber ?? "N/A"}\n` +
+      `⚠️ *Fault Code:* ${fault.faultCode ?? "N/A"}\n` +
+      `📋 *Description:* ${fault.faultDescription ?? "N/A"}\n` +
+      `🔧 *Module:* ${fault.moduleName ?? "N/A"}\n` +
+      `🏭 *Basic Unit:* ${fault.basicUnit ?? "N/A"}\n` +
+      `📍 *Location:* ${fault.location ?? "N/A"}\n` +
+      `🕐 *Time:* ${fault.loggedTimestamp ?? "N/A"}` +
+      (dashboardLink ? `\n\n🔗 Dashboard: ${dashboardLink}` : "");
+  }
+
+  if (masterEntry) {
+    logger.info({ faultCode: fault.faultCode }, "Fault master match found — enhanced alert with rectification");
+  } else {
+    logger.info({ faultCode: fault.faultCode }, "No fault master match — sending standard alert");
+  }
 
   const [logEntry] = await db
     .insert(alertLogsTable)
@@ -171,7 +223,7 @@ export async function sendCategoryAAlert(fault: FaultForAlert): Promise<void> {
       .update(alertLogsTable)
       .set({ status: "sent", sentAt: new Date() })
       .where(eq(alertLogsTable.id, logEntry.id));
-    logger.info({ faultId: fault.id }, "WhatsApp group alert sent");
+    logger.info({ faultId: fault.id, hasMasterEntry: !!masterEntry }, "WhatsApp group alert sent");
   } catch (err) {
     await db
       .update(alertLogsTable)
