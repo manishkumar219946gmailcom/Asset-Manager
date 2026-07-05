@@ -11,9 +11,8 @@ const DEFAULT_SETTINGS: Record<string, string> = {
   apiEndpoint: "",
   apiKey: "",
   refreshInterval: "2",
-  whatsappPhoneNumberId: "",
-  whatsappAccessToken: "",
-  whatsappRecipient: "",
+  whatsappGroupId: "",
+  alert_enabled: "true",
   timezone: "Asia/Kolkata",
   dashboardLink: "",
 };
@@ -35,7 +34,8 @@ router.put("/settings", requireAdmin, async (req, res) => {
   const updates = req.body as Record<string, string>;
   for (const [key, value] of Object.entries(updates)) {
     if (value === undefined) continue;
-    await db.insert(settingsTable)
+    await db
+      .insert(settingsTable)
       .values({ key, value, updatedAt: new Date() })
       .onConflictDoUpdate({ target: settingsTable.key, set: { value, updatedAt: new Date() } });
   }

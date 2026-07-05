@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MessageSquare, CheckCircle2, XCircle, AlertTriangle, Send, RefreshCw } from "lucide-react";
+import { MessageSquare, CheckCircle2, XCircle, Info, Send, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { getToken } from "@/lib/api";
@@ -17,8 +17,8 @@ export default function Alerts() {
       const token = getToken();
       const res = await fetch("/api/alerts/test", { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } });
       const result = await res.json() as { message?: string; error?: string };
-      if (!res.ok) throw new Error(result.error ?? "Failed to send test alert");
-      toast({ title: "Test alert sent", description: result.message ?? "WhatsApp alert dispatched" });
+      if (!res.ok) throw new Error(result.message ?? result.error ?? "Failed to send test alert");
+      toast({ title: "Test alert sent", description: result.message ?? "WhatsApp alert dispatched to group" });
       setTimeout(() => refetch(), 2000);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Failed to send test alert";
@@ -39,7 +39,7 @@ export default function Alerts() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">WhatsApp Alerts</h1>
-          <p className="text-muted-foreground text-sm">Category A fault notifications via WhatsApp Cloud API</p>
+          <p className="text-muted-foreground text-sm">Category A fault notifications sent to your WhatsApp group</p>
         </div>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={() => refetch()} className="gap-2">
@@ -88,14 +88,14 @@ export default function Alerts() {
         </Card>
       </div>
 
-      <Card className="border-amber-500/30 bg-amber-500/5">
+      <Card className="border-blue-500/30 bg-blue-500/5">
         <CardContent className="pt-4 pb-4">
           <div className="flex gap-3 items-start">
-            <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+            <Info className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
             <div className="text-sm">
-              <p className="font-medium text-amber-500">WhatsApp Configuration Required</p>
+              <p className="font-medium text-blue-500">How WhatsApp group alerts work</p>
               <p className="text-muted-foreground text-xs mt-0.5">
-                Configure your WhatsApp Cloud API credentials in Settings → WhatsApp section. Alerts fire automatically for Category A faults. Use "Send Test Alert" to verify connectivity.
+                Go to <strong>Settings → WhatsApp Group Alerts</strong> and click <strong>Connect</strong> to scan a QR code with your phone. Once connected, pick your group and save. Alerts fire automatically for every new Category A fault.
               </p>
             </div>
           </div>
@@ -105,7 +105,7 @@ export default function Alerts() {
       <Card>
         <CardHeader>
           <CardTitle className="text-sm">Alert Log</CardTitle>
-          <CardDescription>History of WhatsApp notifications sent</CardDescription>
+          <CardDescription>History of WhatsApp group notifications sent</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
@@ -113,9 +113,9 @@ export default function Alerts() {
               <TableRow className="bg-muted/40">
                 <TableHead className="text-xs">Status</TableHead>
                 <TableHead className="text-xs">Fault ID</TableHead>
-                <TableHead className="text-xs">Phone</TableHead>
+                <TableHead className="text-xs">Loco No</TableHead>
+                <TableHead className="text-xs">Fault Code</TableHead>
                 <TableHead className="text-xs">Message Preview</TableHead>
-                <TableHead className="text-xs">Response</TableHead>
                 <TableHead className="text-xs">Sent At</TableHead>
               </TableRow>
             </TableHeader>
@@ -131,7 +131,7 @@ export default function Alerts() {
                   <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                     <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-30" />
                     <p>No alerts sent yet</p>
-                    <p className="text-xs mt-1">Category A faults trigger automatic alerts</p>
+                    <p className="text-xs mt-1">Category A faults trigger automatic group alerts</p>
                   </TableCell>
                 </TableRow>
               ) : alerts.map((alert) => (
@@ -140,15 +140,17 @@ export default function Alerts() {
                     <div className="flex items-center gap-1.5">
                       {alert.status === "sent"
                         ? <><CheckCircle2 className="w-3.5 h-3.5 text-green-500" /><span className="text-green-500">Sent</span></>
+                        : alert.status === "pending"
+                        ? <><span className="w-3.5 h-3.5 rounded-full bg-yellow-500 inline-block" /><span className="text-yellow-500">Pending</span></>
                         : <><XCircle className="w-3.5 h-3.5 text-red-500" /><span className="text-red-500">Failed</span></>}
                     </div>
                   </TableCell>
                   <TableCell className="font-mono text-muted-foreground">{String(alert.faultId ?? "—")}</TableCell>
-                  <TableCell className="font-mono">{String(alert.recipientPhone ?? "—")}</TableCell>
-                  <TableCell className="max-w-64 truncate" title={String(alert.messageContent ?? "")}>{String(alert.messageContent ?? "—")}</TableCell>
-                  <TableCell className="max-w-48 truncate text-muted-foreground">{String(alert.apiResponse ?? "—")}</TableCell>
+                  <TableCell className="font-mono">{String(alert.locoNo ?? "—")}</TableCell>
+                  <TableCell className="font-mono">{String(alert.faultCode ?? "—")}</TableCell>
+                  <TableCell className="max-w-64 truncate" title={String(alert.message ?? "")}>{String(alert.message ?? "—")}</TableCell>
                   <TableCell className="text-muted-foreground whitespace-nowrap">
-                    {alert.createdAt ? format(new Date(String(alert.createdAt)), "dd/MM/yy HH:mm") : "—"}
+                    {alert.sentAt ? format(new Date(String(alert.sentAt)), "dd/MM/yy HH:mm") : alert.createdAt ? format(new Date(String(alert.createdAt)), "dd/MM/yy HH:mm") : "—"}
                   </TableCell>
                 </TableRow>
               ))}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useGetSettings, useUpdateSettings, useGetSchedulerStatus, useTriggerFetch } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,21 +6,26 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Save, RefreshCw, Wifi, MessageSquare, Clock, Eye, EyeOff } from "lucide-react";
+import { Save, RefreshCw, Wifi, MessageSquare, Clock, Eye, EyeOff, QrCode, CheckCircle2, XCircle, Loader2, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getToken } from "@/lib/api";
 
 interface SettingsForm {
   loconet_api_url: string;
   loconet_api_key: string;
-  whatsapp_phone_number_id: string;
-  whatsapp_access_token: string;
-  whatsapp_recipient_phone: string;
+  whatsapp_group_id: string;
   alert_enabled: boolean;
   scheduler_interval_minutes: number;
+  dashboard_link: string;
 }
+
+interface WaStatus {
+  status: "disconnected" | "connecting" | "connected";
+  qrCode: string | null;
+}
+
+interface WaGroup { id: string; name: string; }
 
 function SettingSection({ title, description, icon: Icon, children }: {
   title: string; description?: string; icon?: React.ElementType; children: React.ReactNode;
@@ -46,31 +51,58 @@ export default function Settings() {
   const triggerFetch = useTriggerFetch();
   const { toast } = useToast();
   const [showSecret, setShowSecret] = useState(false);
-  const [showToken, setShowToken] = useState(false);
   const [intervalVal, setIntervalVal] = useState(2);
 
   const [form, setForm] = useState<SettingsForm>({
     loconet_api_url: "",
     loconet_api_key: "",
-    whatsapp_phone_number_id: "",
-    whatsapp_access_token: "",
-    whatsapp_recipient_phone: "",
+    whatsapp_group_id: "",
     alert_enabled: true,
     scheduler_interval_minutes: 2,
+    dashboard_link: "",
   });
+
+  const [waStatus, setWaStatus] = useState<WaStatus>({ status: "disconnected", qrCode: null });
+  const [waGroups, setWaGroups] = useState<WaGroup[]>([]);
+  const [connectingWa, setConnectingWa] = useState(false);
+
+  const fetchWaStatus = useCallback(async () => {
+    try {
+      const token = getToken();
+      const res = await fetch("/api/alerts/whatsapp-status", { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) setWaStatus(await res.json() as WaStatus);
+    } catch { /* silent */ }
+  }, []);
+
+  const fetchWaGroups = useCallback(async () => {
+    try {
+      const token = getToken();
+      const res = await fetch("/api/alerts/whatsapp-groups", { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) setWaGroups(await res.json() as WaGroup[]);
+    } catch { /* silent */ }
+  }, []);
+
+  useEffect(() => {
+    fetchWaStatus();
+    const id = setInterval(fetchWaStatus, 5000);
+    return () => clearInterval(id);
+  }, [fetchWaStatus]);
+
+  useEffect(() => {
+    if (waStatus.status === "connected") fetchWaGroups();
+  }, [waStatus.status, fetchWaGroups]);
 
   useEffect(() => {
     if (settings) {
       const s = settings as Record<string, string | boolean | number>;
-      const intervalMin = Number(s.scheduler_interval_minutes ?? 2);
+      const intervalMin = Number(s.refreshInterval ?? 2);
       setForm({
-        loconet_api_url: String(s.loconet_api_url ?? ""),
-        loconet_api_key: String(s.loconet_api_key ?? ""),
-        whatsapp_phone_number_id: String(s.whatsapp_phone_number_id ?? ""),
-        whatsapp_access_token: String(s.whatsapp_access_token ?? ""),
-        whatsapp_recipient_phone: String(s.whatsapp_recipient_phone ?? ""),
+        loconet_api_url: String(s.apiEndpoint ?? ""),
+        loconet_api_key: String(s.apiKey ?? ""),
+        whatsapp_group_id: String(s.whatsappGroupId ?? ""),
         alert_enabled: s.alert_enabled !== "false" && s.alert_enabled !== false,
         scheduler_interval_minutes: intervalMin,
+        dashboard_link: String(s.dashboardLink ?? ""),
       });
       setIntervalVal(intervalMin);
     }
@@ -82,17 +114,29 @@ export default function Settings() {
   const handleSave = async () => {
     try {
       await updateSettings.mutateAsync({ data: {
-        loconet_api_url: form.loconet_api_url,
-        loconet_api_key: form.loconet_api_key,
-        whatsapp_phone_number_id: form.whatsapp_phone_number_id,
-        whatsapp_access_token: form.whatsapp_access_token,
-        whatsapp_recipient_phone: form.whatsapp_recipient_phone,
+        apiEndpoint: form.loconet_api_url,
+        apiKey: form.loconet_api_key,
+        whatsappGroupId: form.whatsapp_group_id,
         alert_enabled: String(form.alert_enabled),
-        scheduler_interval_minutes: String(form.scheduler_interval_minutes),
+        refreshInterval: String(form.scheduler_interval_minutes),
+        dashboardLink: form.dashboard_link,
       }});
       toast({ title: "Settings saved", description: "Configuration updated successfully" });
     } catch {
       toast({ title: "Save failed", variant: "destructive" });
+    }
+  };
+
+  const handleConnectWhatsApp = async () => {
+    setConnectingWa(true);
+    try {
+      const token = getToken();
+      await fetch("/api/alerts/whatsapp-connect", { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+      toast({ title: "WhatsApp connecting", description: "QR code will appear below — scan with your phone" });
+    } catch {
+      toast({ title: "Failed to start WhatsApp", variant: "destructive" });
+    } finally {
+      setConnectingWa(false);
     }
   };
 
@@ -150,41 +194,96 @@ export default function Settings() {
             </button>
           </div>
         </div>
+        <div className="space-y-1.5">
+          <Label>Dashboard Link (optional)</Label>
+          <Input value={form.dashboard_link} onChange={(e) => set("dashboard_link", e.target.value)}
+            placeholder="https://your-domain.com" />
+          <p className="text-xs text-muted-foreground">Included in WhatsApp alert messages</p>
+        </div>
       </SettingSection>
 
-      {/* WhatsApp */}
-      <SettingSection title="WhatsApp Cloud API" description="Category A fault alert notifications" icon={MessageSquare}>
+      {/* WhatsApp Personal Number */}
+      <SettingSection title="WhatsApp Group Alerts" description="Send alerts from your personal number to your group" icon={MessageSquare}>
+
+        {/* Connection Status */}
+        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+          <div className="flex items-center gap-2">
+            {waStatus.status === "connected" && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+            {waStatus.status === "connecting" && <Loader2 className="w-4 h-4 text-yellow-500 animate-spin" />}
+            {waStatus.status === "disconnected" && <XCircle className="w-4 h-4 text-red-500" />}
+            <span className="text-sm font-medium">
+              {waStatus.status === "connected" ? "Connected" : waStatus.status === "connecting" ? "Waiting for QR scan…" : "Not connected"}
+            </span>
+            <Badge variant={waStatus.status === "connected" ? "default" : waStatus.status === "connecting" ? "outline" : "destructive"} className="text-xs capitalize">
+              {waStatus.status}
+            </Badge>
+          </div>
+          {waStatus.status !== "connected" && (
+            <Button size="sm" variant="outline" onClick={handleConnectWhatsApp} disabled={connectingWa || waStatus.status === "connecting"} className="gap-1.5">
+              {connectingWa ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <QrCode className="w-3.5 h-3.5" />}
+              {waStatus.status === "connecting" ? "Connecting…" : "Connect"}
+            </Button>
+          )}
+        </div>
+
+        {/* QR Code */}
+        {waStatus.qrCode && (
+          <div className="flex flex-col items-center gap-3 p-4 rounded-lg border-2 border-dashed border-primary/40 bg-primary/5">
+            <p className="text-sm font-medium text-center">Scan this QR code with WhatsApp on your phone</p>
+            <img src={waStatus.qrCode} alt="WhatsApp QR Code" className="w-52 h-52 rounded-lg" />
+            <p className="text-xs text-muted-foreground text-center">
+              Open WhatsApp → Linked Devices → Link a Device → scan this code
+            </p>
+          </div>
+        )}
+
+        {waStatus.status === "connected" && (
+          <>
+            {/* Group picker */}
+            {waGroups.length > 0 && (
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> Select Group</Label>
+                <select
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={form.whatsapp_group_id}
+                  onChange={(e) => set("whatsapp_group_id", e.target.value)}
+                >
+                  <option value="">— Choose a group —</option>
+                  {waGroups.map((g) => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">Only groups where you are admin are listed</p>
+              </div>
+            )}
+
+            {/* Manual Group ID fallback */}
+            <div className="space-y-1.5">
+              <Label>Group ID (manual)</Label>
+              <Input value={form.whatsapp_group_id}
+                onChange={(e) => set("whatsapp_group_id", e.target.value)}
+                placeholder="120363XXXXXXXXXXXX@g.us" />
+              <p className="text-xs text-muted-foreground">Paste group ID manually if not shown in the picker above</p>
+            </div>
+          </>
+        )}
+
+        {waStatus.status === "disconnected" && (
+          <div className="space-y-1.5">
+            <Label>Group ID</Label>
+            <Input value={form.whatsapp_group_id}
+              onChange={(e) => set("whatsapp_group_id", e.target.value)}
+              placeholder="120363XXXXXXXXXXXX@g.us" />
+            <p className="text-xs text-muted-foreground">Connect WhatsApp above to use the group picker, or paste the group ID directly</p>
+          </div>
+        )}
+
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium">Enable WhatsApp Alerts</p>
-            <p className="text-xs text-muted-foreground">Auto-send alerts for Category A faults</p>
+            <p className="text-sm font-medium">Enable Alerts</p>
+            <p className="text-xs text-muted-foreground">Auto-send to group for Category A faults</p>
           </div>
           <Switch checked={form.alert_enabled} onCheckedChange={(v) => set("alert_enabled", v)} />
-        </div>
-        <Separator />
-        <div className="space-y-1.5">
-          <Label>Phone Number ID</Label>
-          <Input value={form.whatsapp_phone_number_id}
-            onChange={(e) => set("whatsapp_phone_number_id", e.target.value)} placeholder="123456789012345" />
-          <p className="text-xs text-muted-foreground">From Meta Business Suite → WhatsApp</p>
-        </div>
-        <div className="space-y-1.5">
-          <Label>Access Token</Label>
-          <div className="relative">
-            <Input type={showToken ? "text" : "password"} value={form.whatsapp_access_token}
-              onChange={(e) => set("whatsapp_access_token", e.target.value)}
-              placeholder="EAAxxxxxxxxxxxxxxxxxxxxx" className="pr-10" />
-            <button type="button" onClick={() => setShowToken(!showToken)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-              {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <Label>Recipient Phone</Label>
-          <Input value={form.whatsapp_recipient_phone}
-            onChange={(e) => set("whatsapp_recipient_phone", e.target.value)} placeholder="+91XXXXXXXXXX" />
-          <p className="text-xs text-muted-foreground">With country code, e.g. +91XXXXXXXXXX</p>
         </div>
       </SettingSection>
 
@@ -215,7 +314,7 @@ export default function Settings() {
       <div className="flex justify-end">
         <Button onClick={handleSave} disabled={updateSettings.isPending} className="gap-2 min-w-32">
           <Save className="w-4 h-4" />
-          {updateSettings.isPending ? "Saving..." : "Save Settings"}
+          {updateSettings.isPending ? "Saving…" : "Save Settings"}
         </Button>
       </div>
     </div>

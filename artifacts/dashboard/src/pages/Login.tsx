@@ -120,11 +120,6 @@ export default function Login() {
               </Button>
             </form>
 
-            <div className="mt-4 p-3 rounded-lg bg-muted/50 text-xs text-muted-foreground space-y-1">
-              <p className="font-medium text-foreground">Default credentials</p>
-              <p>Username: <span className="font-mono">admin</span></p>
-              <p>Password: <span className="font-mono">admin123</span></p>
-            </div>
           </CardContent>
         </Card>
 
