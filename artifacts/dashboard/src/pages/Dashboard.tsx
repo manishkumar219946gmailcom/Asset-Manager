@@ -13,7 +13,7 @@ import {
 } from "recharts";
 import {
   AlertTriangle, CheckCircle2, Clock, Activity, RefreshCw, Zap,
-  TrendingUp, TrendingDown, Train, Wifi
+  TrendingUp, Train
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
@@ -60,9 +60,10 @@ export default function Dashboard() {
     }
   };
 
-  const catArr = Array.isArray(catData) ? catData : [];
-  const trendArr = Array.isArray(trendData) ? trendData : [];
-  const locoArr = Array.isArray(locoData) ? locoData : [];
+  const s = stats as Record<string, number> | undefined;
+  const catArr = Array.isArray(catData) ? catData as Record<string, unknown>[] : [];
+  const trendArr = Array.isArray(trendData) ? trendData as Record<string, unknown>[] : [];
+  const locoArr = Array.isArray(locoData) ? locoData as Record<string, unknown>[] : [];
 
   return (
     <div className="p-6 space-y-6 max-w-screen-2xl mx-auto">
@@ -79,13 +80,7 @@ export default function Dashboard() {
               {scheduler.lastRun ? `Last sync ${formatDistanceToNow(new Date(String(scheduler.lastRun)), { addSuffix: true })}` : "Never synced"}
             </div>
           )}
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleManualFetch}
-            disabled={triggerFetch.isPending}
-            className="gap-2"
-          >
+          <Button size="sm" variant="outline" onClick={handleManualFetch} disabled={triggerFetch.isPending} className="gap-2">
             <RefreshCw className={`w-4 h-4 ${triggerFetch.isPending ? "animate-spin" : ""}`} />
             Sync Now
           </Button>
@@ -100,14 +95,10 @@ export default function Dashboard() {
           ))
         ) : (
           <>
-            <StatCard title="Total Faults" value={(stats as Record<string,number>)?.totalFaults ?? 0} subtitle="All time records"
-              icon={AlertTriangle} colorClass="text-amber-500" />
-            <StatCard title="Active Faults" value={(stats as Record<string,number>)?.activeFaults ?? 0} subtitle="Unresolved faults"
-              icon={Zap} colorClass="text-red-500" />
-            <StatCard title="Category A" value={(stats as Record<string,number>)?.categoryA ?? 0} subtitle="Critical priority"
-              icon={Train} colorClass="text-destructive" />
-            <StatCard title="Recovered" value={(stats as Record<string,number>)?.recovered ?? 0} subtitle="Resolved faults"
-              icon={CheckCircle2} colorClass="text-green-500" />
+            <StatCard title="Total Faults" value={s?.totalFaults ?? 0} subtitle="All time records" icon={AlertTriangle} colorClass="text-amber-500" />
+            <StatCard title="Active Faults" value={s?.activeFaults ?? 0} subtitle="Unresolved faults" icon={Zap} colorClass="text-red-500" />
+            <StatCard title="Category A" value={s?.categoryA ?? 0} subtitle="Critical priority" icon={Train} colorClass="text-destructive" />
+            <StatCard title="Recovered" value={s?.recovered ?? 0} subtitle="Resolved faults" icon={CheckCircle2} colorClass="text-green-500" />
           </>
         )}
       </div>
@@ -122,19 +113,19 @@ export default function Dashboard() {
           <>
             <Card><CardContent className="pt-6">
               <p className="text-xs text-muted-foreground">Unique Locos</p>
-              <p className="text-2xl font-bold text-primary mt-1">{(stats as Record<string,number>)?.uniqueLocos ?? 0}</p>
+              <p className="text-2xl font-bold text-primary mt-1">{s?.uniqueLocos ?? 0}</p>
             </CardContent></Card>
             <Card><CardContent className="pt-6">
               <p className="text-xs text-muted-foreground">Category B</p>
-              <p className="text-2xl font-bold text-orange-500 mt-1">{(stats as Record<string,number>)?.categoryB ?? 0}</p>
+              <p className="text-2xl font-bold text-orange-500 mt-1">{s?.categoryB ?? 0}</p>
             </CardContent></Card>
             <Card><CardContent className="pt-6">
               <p className="text-xs text-muted-foreground">Category C</p>
-              <p className="text-2xl font-bold text-blue-500 mt-1">{(stats as Record<string,number>)?.categoryC ?? 0}</p>
+              <p className="text-2xl font-bold text-blue-500 mt-1">{s?.categoryC ?? 0}</p>
             </CardContent></Card>
             <Card><CardContent className="pt-6">
               <p className="text-xs text-muted-foreground">Today's Faults</p>
-              <p className="text-2xl font-bold mt-1">{(stats as Record<string,number>)?.todayFaults ?? 0}</p>
+              <p className="text-2xl font-bold mt-1">{s?.todayFaults ?? 0}</p>
             </CardContent></Card>
           </>
         )}
@@ -149,23 +140,16 @@ export default function Dashboard() {
             <CardDescription>A / B / C breakdown</CardDescription>
           </CardHeader>
           <CardContent>
-            {catLoading ? <Skeleton className="h-48 w-full" /> : (
+            {catLoading ? <Skeleton className="h-48 w-full" /> : catArr.length === 0 ? (
+              <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">No data</div>
+            ) : (
               <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
-                  <Pie
-                    data={catArr}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={55}
-                    outerRadius={80}
-                    dataKey="count"
-                    nameKey="name"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    labelLine={false}
-                  >
-                    {catArr.map((_: unknown, i: number) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                    ))}
+                  <Pie data={catArr} cx="50%" cy="50%" innerRadius={55} outerRadius={80}
+                    dataKey="count" nameKey="name"
+                    label={({ name, percent }) => `${String(name)} ${(percent * 100).toFixed(0)}%`}
+                    labelLine={false}>
+                    {catArr.map((_: unknown, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Pie>
                   <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
                 </PieChart>
@@ -181,7 +165,9 @@ export default function Dashboard() {
             <CardDescription>Daily fault count</CardDescription>
           </CardHeader>
           <CardContent>
-            {trendLoading ? <Skeleton className="h-48 w-full" /> : (
+            {trendLoading ? <Skeleton className="h-48 w-full" /> : trendArr.length === 0 ? (
+              <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">No trend data</div>
+            ) : (
               <ResponsiveContainer width="100%" height={200}>
                 <AreaChart data={trendArr} margin={{ top: 4, right: 4, left: -20, bottom: 4 }}>
                   <defs>
@@ -202,27 +188,43 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Top Locos */}
+      {/* Bottom Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Top Locos */}
         <Card>
           <CardHeader>
             <CardTitle className="text-sm">Top Fault-Prone Locos</CardTitle>
             <CardDescription>Most faults recorded</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {locoLoading ? <Skeleton className="h-48 w-full" /> : (
-              locoArr.slice(0, 6).map((loco: Record<string, unknown>, i: number) => {
-                const max = (locoArr[0] as Record<string, number>)?.count ?? 1;
-                return (
-                  <div key={i} className="space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="font-mono text-foreground">{String(loco.name ?? loco.locoNo ?? "Unknown")}</span>
-                      <span className="text-muted-foreground">{Number(loco.count ?? 0)} faults</span>
+            {locoLoading ? <Skeleton className="h-48 w-full" /> : locoArr.length === 0 ? (
+              <div className="h-32 flex items-center justify-center text-muted-foreground text-sm">No data</div>
+            ) : (
+              <>
+                <ResponsiveContainer width="100%" height={160}>
+                  <BarChart data={locoArr.slice(0, 8)} margin={{ top: 4, right: 4, left: -20, bottom: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="name" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} angle={-30} textAnchor="end" interval={0} />
+                    <YAxis tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} />
+                    <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+                    <Bar dataKey="count" name="Faults" radius={[4, 4, 0, 0]}>
+                      {locoArr.map((_: unknown, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+                {locoArr.slice(0, 5).map((loco: Record<string, unknown>, i: number) => {
+                  const max = (locoArr[0] as Record<string, number>)?.count ?? 1;
+                  return (
+                    <div key={i} className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="font-mono text-foreground">{String(loco.name ?? "Unknown")}</span>
+                        <span className="text-muted-foreground">{Number(loco.count ?? 0)} faults</span>
+                      </div>
+                      <Progress value={(Number(loco.count ?? 0) / max) * 100} className="h-1.5" />
                     </div>
-                    <Progress value={(Number(loco.count ?? 0) / max) * 100} className="h-1.5" />
-                  </div>
-                );
-              })
+                  );
+                })}
+              </>
             )}
           </CardContent>
         </Card>
@@ -230,7 +232,7 @@ export default function Dashboard() {
         {/* Scheduler status */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Scheduler Status</CardTitle>
+            <CardTitle className="text-sm">Scheduler & System Status</CardTitle>
             <CardDescription>Auto-fetch from LocoNet API</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -238,7 +240,7 @@ export default function Dashboard() {
               <>
                 <div className="flex items-center gap-3">
                   <div className={`w-3 h-3 rounded-full ${scheduler.isRunning ? "bg-green-500 animate-pulse" : "bg-muted"}`} />
-                  <span className="text-sm font-medium">Status</span>
+                  <span className="text-sm font-medium">Scheduler</span>
                   <Badge variant={scheduler.isRunning ? "default" : "secondary"}>
                     {scheduler.isRunning ? "Running" : "Stopped"}
                   </Badge>
@@ -259,6 +261,16 @@ export default function Dashboard() {
                   <div>
                     <p className="text-xs text-muted-foreground">Fetch Count</p>
                     <p className="font-medium">{(scheduler as Record<string, number>).fetchCount ?? 0}</p>
+                  </div>
+                </div>
+                <div className="pt-2 border-t border-border">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Activity className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span className="text-muted-foreground text-xs">Category A faults auto-alert WhatsApp group</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm mt-1">
+                    <TrendingUp className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span className="text-muted-foreground text-xs">Manual send available per fault in Fault Data tab</span>
                   </div>
                 </div>
               </>

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { alertLogsTable, settingsTable } from "@workspace/db";
+import { alertLogsTable, settingsTable, faultsTable } from "@workspace/db";
 import { eq, desc, sql } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middlewares/auth.js";
 import { getWhatsAppStatus, initWhatsApp, getWhatsAppGroups, sendCategoryAAlert } from "../lib/whatsapp.js";
@@ -39,6 +39,55 @@ router.post("/alerts/whatsapp-connect", requireAdmin, (_req, res) => {
 router.get("/alerts/whatsapp-groups", requireAdmin, async (_req, res) => {
   const groups = await getWhatsAppGroups();
   res.json(groups);
+});
+
+// Manual send alert for a specific fault by ID
+router.post("/alerts/send-fault/:faultId", requireAuth, async (req, res) => {
+  const faultId = parseInt(req.params["faultId"] ?? "0");
+  if (!faultId) {
+    res.status(400).json({ error: "bad_request", message: "Invalid fault ID" });
+    return;
+  }
+
+  const { status } = getWhatsAppStatus();
+  if (status !== "connected") {
+    res.status(400).json({ error: "not_connected", message: "WhatsApp is not connected. Scan the QR code in Settings first." });
+    return;
+  }
+
+  const rows = await db.select().from(settingsTable).where(eq(settingsTable.key, "whatsappGroupId")).limit(1);
+  const groupId = rows[0]?.value ?? "";
+  if (!groupId) {
+    res.status(400).json({ error: "no_group", message: "No WhatsApp group configured. Set the Group ID in Settings." });
+    return;
+  }
+
+  const [fault] = await db.select().from(faultsTable).where(eq(faultsTable.id, faultId)).limit(1);
+  if (!fault) {
+    res.status(404).json({ error: "not_found", message: "Fault not found" });
+    return;
+  }
+
+  // Force send (bypass duplicate check) by using a unique key
+  const uniqueKey = `MANUAL-${faultId}-${Date.now()}`;
+  try {
+    await sendCategoryAAlert({
+      id: fault.id,
+      uniqueFaultId: uniqueKey,
+      locoNo: fault.locoNo,
+      coachNumber: fault.coachNumber,
+      faultCode: fault.faultCode,
+      faultDescription: fault.faultDescription,
+      moduleName: fault.moduleName,
+      basicUnit: fault.basicUnit,
+      location: fault.location,
+      loggedTimestamp: fault.loggedTimestamp ? String(fault.loggedTimestamp) : null,
+    });
+    res.json({ message: `Alert sent for fault #${faultId}` });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    res.status(500).json({ error: "send_failed", message: msg });
+  }
 });
 
 router.post("/alerts/test", requireAdmin, async (_req, res) => {

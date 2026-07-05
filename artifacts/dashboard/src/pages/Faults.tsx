@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Download, RefreshCw, AlertTriangle, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Download, RefreshCw, AlertTriangle, X, ChevronLeft, ChevronRight, Send, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { getToken } from "@/lib/api";
@@ -20,7 +20,7 @@ function CategoryBadge({ cat }: { cat: string }) {
     B: "bg-orange-500/15 text-orange-500 border-orange-500/30",
     C: "bg-blue-500/15 text-blue-500 border-blue-500/30",
   };
-  return <span className={`inline-flex px-1.5 py-0.5 rounded text-xs font-bold border ${variants[cat] ?? "bg-muted text-muted-foreground"}`}>{cat}</span>;
+  return <span className={`inline-flex px-1.5 py-0.5 rounded text-xs font-bold border ${variants[cat] ?? "bg-muted text-muted-foreground"}`}>{cat || "—"}</span>;
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -29,6 +29,45 @@ function StatusBadge({ status }: { status: string }) {
     <span className={`inline-flex px-1.5 py-0.5 rounded-full text-xs font-medium ${isRecovered ? "bg-green-500/15 text-green-500" : "bg-red-500/15 text-red-500"}`}>
       {status ?? "Active"}
     </span>
+  );
+}
+
+function WhatsAppButton({ faultId, category }: { faultId: number; category: string }) {
+  const [sending, setSending] = useState(false);
+  const { toast } = useToast();
+
+  const handleSend = async () => {
+    setSending(true);
+    try {
+      const token = getToken();
+      const res = await fetch(`/api/alerts/send-fault/${faultId}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      });
+      const result = await res.json() as { message?: string; error?: string };
+      if (!res.ok) throw new Error(result.message ?? result.error ?? "Failed");
+      toast({ title: "Alert sent", description: result.message ?? "WhatsApp alert dispatched to group" });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Failed to send";
+      toast({ title: "Alert failed", description: msg, variant: "destructive" });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const isCritical = category === "A";
+  return (
+    <Button
+      size="sm"
+      variant={isCritical ? "destructive" : "outline"}
+      className="h-6 px-2 text-xs gap-1"
+      onClick={handleSend}
+      disabled={sending}
+      title="Send WhatsApp alert for this fault"
+    >
+      {sending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+      {isCritical ? "Alert!" : "Send"}
+    </Button>
   );
 }
 
@@ -85,9 +124,9 @@ export default function Faults() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Fault Data</h1>
-          <p className="text-muted-foreground text-sm">{total.toLocaleString()} records</p>
+          <p className="text-muted-foreground text-sm">{total.toLocaleString()} records • <span className="text-green-500">Send</span> button sends WhatsApp alert • <span className="text-red-500 font-medium">Alert!</span> = Category A critical fault</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button size="sm" variant="outline" onClick={() => refetch()} className="gap-2">
             <RefreshCw className="w-3.5 h-3.5" /> Refresh
           </Button>
@@ -172,58 +211,66 @@ export default function Faults() {
                 <TableHead className="text-xs whitespace-nowrap">DB Ts</TableHead>
                 <TableHead className="text-xs whitespace-nowrap">Created</TableHead>
                 <TableHead className="text-xs whitespace-nowrap">Fault ID</TableHead>
+                <TableHead className="text-xs whitespace-nowrap sticky right-0 bg-muted/40">WhatsApp</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 Array.from({ length: 8 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: 19 }).map((_, j) => (
+                    {Array.from({ length: 20 }).map((_, j) => (
                       <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : faults.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={19} className="text-center py-12 text-muted-foreground">
+                  <TableCell colSpan={20} className="text-center py-12 text-muted-foreground">
                     <AlertTriangle className="w-8 h-8 mx-auto mb-2 opacity-30" />
                     <p>No fault records found</p>
                     {hasFilters && <p className="text-xs mt-1">Try clearing the filters</p>}
                   </TableCell>
                 </TableRow>
-              ) : faults.map((f) => (
-                <TableRow key={String(f.id)} className="text-xs hover:bg-muted/30">
-                  <TableCell><CategoryBadge cat={String(f.category ?? "")} /></TableCell>
-                  <TableCell className="font-mono font-medium whitespace-nowrap">{String(f.locoNo ?? "—")}</TableCell>
-                  <TableCell className="font-mono whitespace-nowrap">{String(f.faultCode ?? "—")}</TableCell>
-                  <TableCell className="max-w-48 truncate" title={String(f.faultDescription ?? "")}>{String(f.faultDescription ?? "—")}</TableCell>
-                  <TableCell className="whitespace-nowrap"><Badge variant="outline" className="text-xs">{String(f.zone ?? "—")}</Badge></TableCell>
-                  <TableCell className="whitespace-nowrap">{String(f.shed ?? "—")}</TableCell>
-                  <TableCell className="whitespace-nowrap">{String(f.moduleName ?? "—")}</TableCell>
-                  <TableCell className="whitespace-nowrap">{String(f.location ?? "—")}</TableCell>
-                  <TableCell className="whitespace-nowrap font-mono">{String(f.coachNumber ?? "—")}</TableCell>
-                  <TableCell className="whitespace-nowrap">{String(f.locoType ?? "—")}</TableCell>
-                  <TableCell className="whitespace-nowrap">{String(f.basicUnit ?? "—")}</TableCell>
-                  <TableCell><StatusBadge status={String(f.recoveryStatus ?? "Active")} /></TableCell>
-                  <TableCell className="whitespace-nowrap">{String(f.alertType ?? "—")}</TableCell>
-                  <TableCell className="whitespace-nowrap">{String(f.downloadStatus ?? "—")}</TableCell>
-                  <TableCell className="whitespace-nowrap text-muted-foreground">
-                    {f.loggedTimestamp ? format(new Date(String(f.loggedTimestamp)), "dd/MM HH:mm") : "—"}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap text-muted-foreground">
-                    {f.apiTimestamp ? format(new Date(String(f.apiTimestamp)), "dd/MM HH:mm") : "—"}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap text-muted-foreground">
-                    {f.dbTimestamp ? format(new Date(String(f.dbTimestamp)), "dd/MM HH:mm") : "—"}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap text-muted-foreground">
-                    {f.createdAt ? format(new Date(String(f.createdAt)), "dd/MM HH:mm") : "—"}
-                  </TableCell>
-                  <TableCell className="font-mono text-muted-foreground text-xs max-w-32 truncate" title={String(f.uniqueFaultId ?? "")}>
-                    {String(f.uniqueFaultId ?? "—")}
-                  </TableCell>
-                </TableRow>
-              ))}
+              ) : faults.map((f) => {
+                const cat = String(f.category ?? "");
+                const isCritical = cat === "A";
+                return (
+                  <TableRow key={String(f.id)} className={`text-xs hover:bg-muted/30 ${isCritical ? "bg-red-500/5" : ""}`}>
+                    <TableCell><CategoryBadge cat={cat} /></TableCell>
+                    <TableCell className="font-mono font-medium whitespace-nowrap">{String(f.locoNo ?? "—")}</TableCell>
+                    <TableCell className="font-mono whitespace-nowrap">{String(f.faultCode ?? "—")}</TableCell>
+                    <TableCell className="max-w-48 truncate" title={String(f.faultDescription ?? "")}>{String(f.faultDescription ?? "—")}</TableCell>
+                    <TableCell className="whitespace-nowrap"><Badge variant="outline" className="text-xs">{String(f.zone ?? "—")}</Badge></TableCell>
+                    <TableCell className="whitespace-nowrap">{String(f.shed ?? "—")}</TableCell>
+                    <TableCell className="whitespace-nowrap">{String(f.moduleName ?? "—")}</TableCell>
+                    <TableCell className="whitespace-nowrap">{String(f.location ?? "—")}</TableCell>
+                    <TableCell className="whitespace-nowrap font-mono">{String(f.coachNumber ?? "—")}</TableCell>
+                    <TableCell className="whitespace-nowrap">{String(f.locoType ?? "—")}</TableCell>
+                    <TableCell className="whitespace-nowrap">{String(f.basicUnit ?? "—")}</TableCell>
+                    <TableCell><StatusBadge status={String(f.recoveryStatus ?? "Active")} /></TableCell>
+                    <TableCell className="whitespace-nowrap">{String(f.alertType ?? "—")}</TableCell>
+                    <TableCell className="whitespace-nowrap">{String(f.downloadStatus ?? "—")}</TableCell>
+                    <TableCell className="whitespace-nowrap text-muted-foreground">
+                      {f.loggedTimestamp ? format(new Date(String(f.loggedTimestamp)), "dd/MM HH:mm") : "—"}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-muted-foreground">
+                      {f.apiTimestamp ? format(new Date(String(f.apiTimestamp)), "dd/MM HH:mm") : "—"}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-muted-foreground">
+                      {f.dbTimestamp ? format(new Date(String(f.dbTimestamp)), "dd/MM HH:mm") : "—"}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-muted-foreground">
+                      {f.createdAt ? format(new Date(String(f.createdAt)), "dd/MM HH:mm") : "—"}
+                    </TableCell>
+                    <TableCell className="font-mono text-muted-foreground text-xs max-w-32 truncate" title={String(f.uniqueFaultId ?? "")}>
+                      {String(f.uniqueFaultId ?? "—")}
+                    </TableCell>
+                    <TableCell className="sticky right-0 bg-background border-l border-border">
+                      <WhatsAppButton faultId={Number(f.id)} category={cat} />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
@@ -231,7 +278,7 @@ export default function Faults() {
         {/* Pagination */}
         <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/20">
           <p className="text-xs text-muted-foreground">
-            Showing {((page - 1) * PAGE_SIZE) + 1}–{Math.min(page * PAGE_SIZE, total)} of {total.toLocaleString()} records
+            Showing {Math.min(((page - 1) * PAGE_SIZE) + 1, total)}–{Math.min(page * PAGE_SIZE, total)} of {total.toLocaleString()} records
           </p>
           <div className="flex items-center gap-2">
             <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
